@@ -1,0 +1,668 @@
+Program 1 Menu code:
+
+        IDENTIFICATION DIVISION.                                         
+        PROGRAM-ID. A11PGM4.                                             
+       *MENU SCREEN PROGRAM.                                             
+        DATA DIVISION.                                                   
+        WORKING-STORAGE SECTION.                                         
+            COPY A11MPS2.                                                
+            COPY DFHBMSCA.                                               
+            COPY DFHAID.                                                 
+        01 WS-COMM            PIC X(06).                                 
+        77 WS-ABSTIME         PIC S9(15) COMP-3.                         
+        77 WS-DATE            PIC X(10) VALUE SPACES.                    
+        77 WS-TIME            PIC X(08) VALUE SPACES.                    
+        77 WS-RESP            PIC S9(08) COMP.                           
+        77 WS-LENGTH          PIC S9(04) COMP.                           
+        PROCEDURE DIVISION.                                              
+        000-MAIN-PROCESS.                                                
+            EVALUATE EIBCALEN                                            
+             WHEN 0                                                      
+              MOVE LOW-VALUES TO MENUMAPO                                
+              PERFORM 100-SEND-MAP-PARA                                  
+              MOVE 6 TO WS-LENGTH                                        
+              PERFORM 110-RETURN-PROG-PARA     
+            WHEN 6                                                      
+             PERFORM 200-RECEIVE-MAP-PARA                               
+           END-EVALUATE.                                                
+           PERFORM 500-RETURN-MAP-PARA.                                 
+       100-SEND-MAP-PARA.                                               
+           EXEC CICS ASKTIME                                            
+                ABSTIME(WS-ABSTIME)                                     
+           END-EXEC.                                                    
+           EXEC CICS FORMATTIME                                         
+                ABSTIME(WS-ABSTIME)                                     
+                DDMMYYYY(WS-DATE)                                       
+                DATESEP('-')                                            
+                TIME(WS-TIME)                                           
+                TIMESEP(':')                                            
+           END-EXEC.                                                    
+           MOVE WS-DATE TO DATEO.                                       
+           MOVE WS-TIME TO TIMEO.                                       
+           MOVE DFHBMPRF TO MSGA.                                       
+           EXEC CICS SEND                                               
+                MAP('MENUMAP')                                          
+                MAPSET('A11MPS2')                                       
+                ERASE                                                   
+           END-EXEC.                                             
+       110-RETURN-PROG-PARA.                                            
+           EXEC CICS RETURN                                             
+                TRANSID('A114')                                         
+                COMMAREA(WS-COMM)                                       
+                LENGTH(WS-LENGTH)                                       
+           END-EXEC.                                                    
+       200-RECEIVE-MAP-PARA.                                            
+           EXEC CICS RECEIVE                                            
+                MAP('MENUMAP')                                          
+                MAPSET('A11MPS2')                                       
+                RESP(WS-RESP)                                           
+           END-EXEC.                                                    
+           EVALUATE WS-RESP                                             
+            WHEN DFHRESP(NORMAL)                                        
+             PERFORM 210-KEY-CHK-PARA                                   
+            WHEN DFHRESP(MAPFAIL)                                       
+             MOVE LOW-VALUES TO MENUMAPO                                
+             MOVE 'PLEASE ENTER VALID CHOICE(1/2/3/4)' TO MSGO          
+             MOVE DFHBMPRF TO MSGA                                      
+             PERFORM 100-SEND-MAP-PARA                                  
+             MOVE 6 TO WS-LENGTH                                        
+             PERFORM 110-RETURN-PROG-PARA                               
+            WHEN DFHRESP(LENGERR)                                       
+             MOVE 'INVALID LENGTH' TO MSGO                              
+             PERFORM 500-RETURN-MAP-PARA  
+           END-EVALUATE.                                              
+       210-KEY-CHK-PARA.                                              
+           EVALUATE EIBAID                                            
+            WHEN DFHENTER                                             
+             PERFORM 220-VALIDATION-PARA                              
+            WHEN DFHPF3                                               
+             PERFORM 300-EXIT-PARA                                    
+            WHEN DFHPF5                                               
+             PERFORM 310-CLEAR-PARA                                   
+            WHEN DFHPF1                                               
+             PERFORM 320-HELP-PARA                                    
+            WHEN OTHER                                                
+             PERFORM 330-INVALID-FUN-PARA                             
+           END-EVALUATE.                                              
+       300-EXIT-PARA.                                                 
+           MOVE LOW-VALUES TO MENUMAPO.                               
+           MOVE 'THANK YOU!!!' TO MSGO.                               
+           PERFORM 100-SEND-MAP-PARA.                                 
+           PERFORM 500-RETURN-MAP-PARA.                               
+       310-CLEAR-PARA.                                                
+           MOVE LOW-VALUES TO MENUMAPO.                               
+           MOVE 'PLEASE ENTER VALID CHOICE(1/2/3/4)' TO MSGO.         
+           PERFORM 100-SEND-MAP-PARA.                                 
+           MOVE 6 TO WS-LENGTH. 
+           PERFORM 110-RETURN-PROG-PARA.                                
+       320-HELP-PARA.                                                   
+           MOVE LOW-VALUES TO MENUMAPO.                                 
+           MOVE 'HELP NOT AVAILABLE' TO MSGO.                           
+           PERFORM 100-SEND-MAP-PARA.                                   
+           MOVE 6 TO WS-LENGTH.                                         
+           PERFORM 110-RETURN-PROG-PARA.                                
+       330-INVALID-FUN-PARA.                                            
+           MOVE LOW-VALUES TO MENUMAPO.                                 
+           MOVE 'INVALID FUNCTION PRESSED' TO MSGO.                     
+           PERFORM 100-SEND-MAP-PARA.                                   
+           MOVE 6 TO WS-LENGTH.                                         
+           PERFORM 110-RETURN-PROG-PARA.                                
+      **************************************************                
+      *VALIDATION OF CHOICE TO NAVIGATE TO OTHER SCREEN                 
+      **************************************************                
+       220-VALIDATION-PARA.                                             
+           IF CHOICEL > 0                                               
+            EVALUATE CHOICEI                                            
+             WHEN 1                                                     
+              EXEC CICS XCTL                                            
+                   PROGRAM('A11PGM3')                                   
+              END-EXEC 
+              WHEN 2                                                     
+               EXEC CICS XCTL                                            
+                    PROGRAM('A11PGM1')                                   
+               END-EXEC                                                  
+              WHEN 3                                                     
+               EXEC CICS XCTL                                            
+                    PROGRAM('A11PGM5')                                   
+               END-EXEC                                                  
+              WHEN 4                                                     
+               EXEC CICS XCTL                                            
+                    PROGRAM('A11PGM2')                                   
+               END-EXEC                                                  
+              WHEN OTHER                                                 
+               MOVE 'INVALID CHOICE ALLOWED ONLY (1/2/3/4)' TO MSGO      
+             END-EVALUATE                                                
+            ELSE                                                         
+             MOVE 'PLEASE ENTER VALID CHOICE(1/2/3/4)' TO MSGO           
+            END-IF.                                                      
+            PERFORM 100-SEND-MAP-PARA.                                   
+            MOVE 6 TO WS-LENGTH.                                         
+            PERFORM 110-RETURN-PROG-PARA.                                
+        500-RETURN-MAP-PARA.                                             
+            EXEC CICS                                                    
+                RETURN                                                   
+            END-EXEC.                                                    
+ **************************** Bottom of Data ****************************                                                                                                                                 
+                    
+pragram 2 Insert code:
+
+       IDENTIFICATION DIVISION.                                        
+       PROGRAM-ID. A11PGM3.                                            
+      *INSERT SCREEN PROGRAM.                                          
+       DATA DIVISION.                                                  
+       WORKING-STORAGE SECTION.                                        
+           COPY A11MPS2.                                               
+           COPY DFHBMSCA.                                              
+           COPY DFHAID.                                                
+           EXEC SQL                                                    
+              INCLUDE DEPTDCL                                          
+           END-EXEC.                                                   
+           EXEC SQL                                                    
+              INCLUDE EMPDCL                                           
+           END-EXEC.                                                   
+           EXEC SQL                                                    
+              INCLUDE EXTDCL                                           
+           END-EXEC.                                                   
+           EXEC SQL                                                    
+              INCLUDE LDRDCL                                           
+           END-EXEC.                                                   
+           EXEC SQL                                                    
+              INCLUDE DESDCL                                           
+           END-EXEC.                           
+           EXEC SQL                                                   
+              INCLUDE PRODCL                                          
+           END-EXEC.                                                  
+           EXEC SQL                                                   
+              INCLUDE SQLCA                                           
+           END-EXEC.                                                  
+       01 WS-COMM            PIC X(06).                               
+       77 WS-ABSTIME         PIC S9(15) COMP-3.                       
+       77 WS-DATE            PIC X(10) VALUE SPACES.                  
+       77 WS-TIME            PIC X(08) VALUE SPACES.                  
+       77 WS-DOJ             PIC X(10) VALUE SPACES.                  
+       77 WS-RESP            PIC S9(08) COMP.                         
+       77 WS-LENGTH          PIC S9(04) COMP.                         
+       77 WS-COUNTER         PIC 9(02) VALUE 0.                       
+       77 WS-MSG             PIC X(74).                               
+       77 I                  PIC 9(02).                               
+       77 COUNT-CHAR         PIC 9(02).                               
+       77 COUNT-SPACE        PIC 9(02) VALUE ZEROES.                  
+       77 COUNT-POINT        PIC 9(02) VALUE ZEROES.                  
+       77 X                  PIC 9(09).                               
+       77 WS-FLAG            PIC X(01).                               
+       77 WS-TEMP            PIC X(09).                               
+       01 WS-SPACE-COUNT     PIC 9(03).                               
+       01 WS-MAIL-CHAR       PIC 9(03).                               
+       01 WS-MAIL-ID         PIC 9(03).                               
+        01 WS-MAIL-ID-CHAR    PIC 9(03).                                 
+        01 WS-CHAR-CHECK      PIC X(1).                                  
+        01 NAME-ERROR         PIC X(1) VALUE 'N'.                        
+         88 NAME-ERROR-Y               VALUE 'Y'.                        
+        01 WS-SQLCODE     PIC S9(03) SIGN LEADING SEPARATE.              
+        01 IV-EMPID           PIC S9(04) COMP.                           
+        01 IV-PROJ            PIC S9(04) COMP.                           
+        01 IV-PLID            PIC S9(04) COMP.                           
+        PROCEDURE DIVISION.                                              
+        000-MAIN-PROCESS.                                                
+            EVALUATE EIBCALEN                                            
+             WHEN 0                                                      
+              MOVE LOW-VALUES TO ADDMAPO                                 
+              PERFORM 100-SEND-MAP-PARA                                  
+              MOVE 6 TO WS-LENGTH                                        
+              PERFORM 110-RETURN-PROG-PARA                               
+             WHEN 6                                                      
+              PERFORM 200-RECEIVE-MAP-PARA                               
+            END-EVALUATE.                                                
+            PERFORM 500-RETURN-MAP-PARA.                                 
+        100-SEND-MAP-PARA.                                               
+            EXEC CICS ASKTIME                                            
+                 ABSTIME(WS-ABSTIME)                                     
+            END-EXEC.                                                    
+            EXEC CICS FORMATTIME      
+                 ABSTIME(WS-ABSTIME)                                     
+                 DDMMYYYY(WS-DATE)                                       
+                 DATESEP('-')                                            
+                 TIME(WS-TIME)                                           
+                 TIMESEP(':')                                            
+            END-EXEC.                                                    
+            MOVE WS-DATE TO DATEAO.                                      
+            MOVE WS-TIME TO TIMEAO.                                      
+            MOVE DFHBMPRF TO MSGAA.                                      
+            MOVE DFHBMPRF TO EMPIDA.                                     
+            MOVE DFHBMPRF TO EXTENA.                                     
+            MOVE DFHBMPRF TO PLIDA.                                      
+            EXEC CICS SEND                                               
+                 MAP('ADDMAP')                                           
+                 MAPSET('A11MPS2')                                       
+                 ERASE                                                   
+            END-EXEC.                                                    
+        110-RETURN-PROG-PARA.                                            
+            EXEC CICS RETURN                                             
+                 TRANSID('A113')                                         
+                 COMMAREA(WS-COMM)                                       
+                 LENGTH(WS-LENGTH)                                       
+            END-EXEC.                                                    
+        200-RECEIVE-MAP-PARA.                                            
+            EXEC CICS RECEIVE            
+           EXEC CICS RECEIVE                                         
+                MAP('ADDMAP')                                        
+                MAPSET('A11MPS2')                                    
+                RESP(WS-RESP)                                        
+           END-EXEC.                                                 
+           EVALUATE WS-RESP                                          
+            WHEN DFHRESP(NORMAL)                                     
+             PERFORM 210-KEY-CHK-PARA                                
+            WHEN DFHRESP(MAPFAIL)                                    
+             MOVE LOW-VALUES TO ADDMAPO                              
+             MOVE 'PLEASE ENTER VALID CHOICE(1/2/3/4)' TO MSGAO      
+             MOVE DFHBMPRF TO MSGAA                                  
+             PERFORM 100-SEND-MAP-PARA                               
+             MOVE 6 TO WS-LENGTH                                     
+             PERFORM 110-RETURN-PROG-PARA                            
+            WHEN DFHRESP(LENGERR)                                    
+             MOVE 'INVALID LENGTH' TO MSGAO                          
+             PERFORM 500-RETURN-MAP-PARA                             
+           END-EVALUATE.                                             
+       210-KEY-CHK-PARA.                                             
+           EVALUATE EIBAID                                           
+            WHEN DFHENTER                                            
+             PERFORM 220-VALIDATION-PARA                             
+            WHEN DFHPF2                                              
+             PERFORM 300-RETURN-MENU-PARA                            
+            WHEN DFHPF5  
+              PERFORM 310-CLEAR-PARA                                     
+             WHEN DFHPF1                                                 
+              PERFORM 320-HELP-PARA                                      
+             WHEN OTHER                                                  
+              PERFORM 330-INVALID-FUN-PARA                               
+            END-EVALUATE.                                                
+        300-RETURN-MENU-PARA.                                            
+            EXEC CICS XCTL                                               
+                 PROGRAM('A11PGM4')                                      
+            END-EXEC.                                                    
+        310-CLEAR-PARA.                                                  
+            MOVE LOW-VALUES TO ADDMAPO.                                  
+            MOVE 'ENTER EMPLOYEE DETAILS' TO MSGAO.                      
+            PERFORM 100-SEND-MAP-PARA.                                   
+            MOVE 6 TO WS-LENGTH.                                         
+            PERFORM 110-RETURN-PROG-PARA.                                
+        320-HELP-PARA.                                                   
+            MOVE LOW-VALUES TO ADDMAPO.                                  
+            MOVE 'HELP NOT AVAILABLE' TO MSGAO.                          
+            PERFORM 100-SEND-MAP-PARA.                                   
+            MOVE 6 TO WS-LENGTH.                                         
+            PERFORM 110-RETURN-PROG-PARA.                                
+        330-INVALID-FUN-PARA.                                            
+            MOVE LOW-VALUES TO ADDMAPO.                                  
+            MOVE 'INVALID FUNCTION PRESSED' TO MSGAO.                    
+           MOVE 'INVALID FUNCTION PRESSED' TO MSGAO.                   
+           PERFORM 100-SEND-MAP-PARA.                                  
+           MOVE 6 TO WS-LENGTH.                                        
+           PERFORM 110-RETURN-PROG-PARA.                               
+       221-VALIDATE-NAME.                                              
+           MOVE 0 TO COUNT-CHAR.                                       
+           PERFORM VARYING I FROM 1 BY 1 UNTIL (I > EMPNAMEL OR        
+                             NAME-ERROR-Y)                             
+            MOVE EMPNAMEI(I:1) TO WS-CHAR-CHECK                        
+            EVALUATE WS-CHAR-CHECK                                     
+             WHEN 'A' THRU 'Z'                                         
+              COMPUTE COUNT-CHAR = COUNT-CHAR + 1                      
+             WHEN '.'                                                  
+              COMPUTE COUNT-CHAR = COUNT-CHAR + 1                      
+             WHEN SPACE                                                
+              COMPUTE COUNT-CHAR = COUNT-CHAR + 1                      
+             WHEN OTHER                                                
+              SET NAME-ERROR-Y TO TRUE                                 
+              COMPUTE COUNT-CHAR = COUNT-CHAR - 1                      
+            END-EVALUATE                                               
+           END-PERFORM.                                                
+           INSPECT EMPNAMEI TALLYING COUNT-POINT FOR ALL '.'.          
+           IF (COUNT-CHAR = EMPNAMEL AND EMPNAMEI NOT EQUAL TO SPACES  
+               AND COUNT-POINT < EMPNAMEL)                             
+            COMPUTE WS-COUNTER = WS-COUNTER + 1                        
+            MOVE DFHBMPRF TO EMPNAMEA              
+            MOVE EMPNAMEI TO HV-EMPNAME-TEXT                            
+           ELSE                                                         
+            STRING WS-MSG DELIMITED BY '-',                             
+             'NAME INVALID -' DELIMITED BY SIZE                         
+              INTO WS-MSG                                               
+           END-IF.                                                      
+       222-VALIDATE-DEPT.                                               
+           MOVE DEPTCI TO HV-DEPTCODE.                                  
+           EXEC SQL                                                     
+              SELECT DEPTCODE INTO :HV-DEPTCODE                         
+              FROM DEPARTMENT_MASTER                                    
+              WHERE DEPTCODE = :HV-DEPTCODE                             
+           END-EXEC.                                                    
+           EVALUATE  SQLCODE                                            
+            WHEN 000                                                    
+             MOVE 'Y' TO WS-FLAG                                        
+            WHEN 100                                                    
+             MOVE 'N' TO WS-FLAG                                        
+            WHEN -805                                                   
+             MOVE 'N' TO WS-FLAG                                        
+            WHEN OTHER                                                  
+             MOVE 'N' TO WS-FLAG                                        
+           END-EVALUATE.                                                
+       220-VALIDATION-PARA.                                             
+           MOVE SPACES TO WS-MSG.        
+           MOVE '-' TO WS-MSG.                                          
+           MOVE 0 TO WS-COUNTER.                                        
+           INITIALIZE HV-EMP-REC.                                       
+      ***************************************************************** 
+      *EMPLOYEE NAME VALIDATION                                         
+      ***************************************************************** 
+           IF EMPNAMEL > 0                                              
+            PERFORM 221-VALIDATE-NAME                                   
+           END-IF.                                                      
+      ***************************************************************** 
+      *EMPLOYEE DESIGNATION VALIDATION                                  
+      ***************************************************************** 
+           IF DESGL > 0                                                 
+            MOVE DESGI TO HV-DESGVAL-TEXT                               
+            MOVE LENGTH OF HV-DESGVAL-TEXT TO HV-DESGVAL-LEN            
+            EXEC SQL                                                    
+               SELECT DESGVAL INTO :HV-DESGVAL                          
+               FROM DESIGNATION                                         
+               WHERE DESGVAL = :HV-DESGVAL                              
+            END-EXEC                                                    
+            EVALUATE  SQLCODE                                           
+             WHEN 000                                                   
+              COMPUTE WS-COUNTER = WS-COUNTER + 1                       
+              MOVE DFHBMPRF TO DESGA                                    
+              MOVE HV-DESGVAL-TEXT TO HV-DESG-TEXT   
+             WHEN 100                                                   
+              STRING WS-MSG DELIMITED BY '-',                           
+               'DESG INVALID -'                                         
+                DELIMITED BY SIZE INTO WS-MSG                           
+            END-EVALUATE                                                
+           END-IF.                                                      
+      ***************************************************************** 
+      *EMPLOYEE MAIL VALIDATION                                         
+      ***************************************************************** 
+           IF MAILL > 0                                                 
+            INITIALIZE WS-MAIL-ID                                       
+            INITIALIZE WS-MAIL-CHAR                                     
+            INSPECT MAILI TALLYING WS-MAIL-ID FOR ALL '@GMAIL.COM'      
+            INSPECT MAILI TALLYING WS-MAIL-CHAR FOR CHARACTERS          
+              BEFORE '@GMAIL.COM'                                       
+            IF WS-MAIL-ID = 1 AND WS-MAIL-CHAR >= 1                     
+             COMPUTE WS-COUNTER = WS-COUNTER + 1                        
+             MOVE DFHBMPRF TO MAILA                                     
+             MOVE MAILI TO HV-MAILID-TEXT                               
+            ELSE                                                        
+             STRING WS-MSG DELIMITED BY '-',                            
+              'MAIL INVALID -'                                          
+                DELIMITED BY SIZE INTO WS-MSG                           
+            END-IF                                                      
+           END-IF.               
+      ***************************************************************** 
+      *EMPLOYEE PROJECT VALIDATION                                      
+      ***************************************************************** 
+           IF PROJL > 0                                                 
+            INITIALIZE HV-PROJ                                          
+            IF DESGI = 'TRNEE'                                          
+             MOVE -1 TO IV-PROJ                                         
+             MOVE "NA" TO PROJO                                         
+             MOVE DFHBMPRF TO PROJA                                     
+             COMPUTE WS-COUNTER = WS-COUNTER + 1                        
+            ELSE                                                        
+             MOVE PROJI TO HV-PROJID-TEXT                               
+             MOVE PROJL TO HV-PROJID-LEN                                
+             EXEC SQL                                                   
+                SELECT PROJID INTO :HV-PROJID                           
+                FROM PROJECT_MASTER                                     
+                WHERE PROJID = :HV-PROJID                               
+             END-EXEC                                                   
+             EVALUATE SQLCODE                                           
+              WHEN 000                                                  
+               COMPUTE WS-COUNTER = WS-COUNTER + 1                      
+               MOVE DFHBMPRF TO PROJA                                   
+               MOVE HV-PROJID-TEXT TO HV-PROJ-TEXT                      
+               MOVE 0 TO IV-PROJ                                        
+              WHEN 100                     
+                STRING WS-MSG DELIMITED BY '-',                          
+                 'PROJ INVALID -' DELIMITED BY SIZE                      
+                 INTO WS-MSG                                             
+               WHEN OTHER                                                
+                STRING WS-MSG DELIMITED BY '-',                          
+                 'PROJ INVALID-' DELIMITED BY SIZE                       
+                 INTO WS-MSG                                             
+              END-EVALUATE                                               
+             END-IF                                                      
+            END-IF.                                                      
+       ***************************************************************** 
+       *EMPLOYEE DEPTARTMENT VALIDATION                                  
+       ***************************************************************** 
+            IF DEPTCL > 0                                                
+             IF DESGI = 'TRNEE'                                          
+              MOVE 01550 TO HV-DEPTNO                                    
+              MOVE 01550 TO DEPTCO                                       
+              MOVE DFHBMPRF TO DEPTCA                                    
+              COMPUTE WS-COUNTER = WS-COUNTER + 1                        
+             ELSE                                                        
+              PERFORM 222-VALIDATE-DEPT                                  
+              IF DEPTCI IS NUMERIC AND WS-FLAG = 'Y'                     
+               COMPUTE WS-COUNTER = WS-COUNTER + 1                       
+               MOVE DFHBMPRF TO DEPTCA                                   
+               MOVE DEPTCI TO HV-DEPTNO                         
+             ELSE                                                       
+              STRING WS-MSG DELIMITED BY '-',                           
+               'DEPT INVALID -'                                         
+                 DELIMITED BY SIZE INTO WS-MSG                          
+             END-IF                                                     
+            END-IF                                                      
+           END-IF.                                                      
+      ***************************************************************** 
+      *EMPLOYEE SALARY VALIDATION                                       
+      ***************************************************************** 
+           IF SLRL > 0                                                  
+            IF SLRI IS NUMERIC AND SLRI <= 999999 AND SLRI >= 10000     
+             COMPUTE WS-COUNTER = WS-COUNTER + 1                        
+             MOVE DFHBMPRF TO SLRA                                      
+             MOVE SLRI TO HV-SALARY                                     
+            ELSE                                                        
+             STRING WS-MSG DELIMITED BY '-',                            
+              'SALARY INVALID -' DELIMITED BY SIZE                      
+              INTO WS-MSG                                               
+            END-IF                                                      
+           END-IF.                                                      
+      *IF ALL THE DETAILS VALID GO TO INSERT PARA                       
+           IF WS-COUNTER = 6                                            
+            PERFORM 223-INSERT-PARA                                     
+           ELSE IF (EMPNAMEL = 0 OR DESGL = 0 OR MAILL = 0 OR       
+                PROJL = 0 OR DEPTCL = 0 OR SLRL = 0)                  
+            STRING WS-MSG DELIMITED BY '-',                           
+             '* FIELDS  ARE MANDORTY -' DELIMITED BY SIZE,            
+              INTO WS-MSG                                             
+           END-IF                                                     
+           END-IF.                                                    
+           STRING WS-MSG DELIMITED BY '-',                            
+           ' ' DELIMITED BY SIZE INTO WS-MSG                          
+           MOVE WS-MSG TO MSGAO.                                      
+           PERFORM 100-SEND-MAP-PARA.                                 
+           MOVE 6 TO WS-LENGTH.                                       
+           PERFORM 110-RETURN-PROG-PARA.                              
+       225-PLID-PARA.                                                 
+           MOVE PROJI TO HV-PROJNAME-TEXT                             
+           MOVE LENGTH OF HV-PROJNAME-TEXT TO HV-PROJNAME-LEN         
+           EXEC SQL                                                   
+            SELECT PROJNAME,PLIDVAL INTO :HV-PROJNAME,:HV-PLIDVAL     
+              FROM LEADER                                             
+             WHERE PROJNAME = :HV-PROJNAME                            
+           END-EXEC                                                   
+           EVALUATE SQLCODE                                           
+            WHEN 000                                                  
+             STRING WS-MSG DELIMITED BY '-',                          
+              'PLID EXISTS ALREADY -' DELIMITED BY SIZE               
+               INTO WS-MSG 
+            WHEN 100                                                  
+            MOVE HV-EMPID TO HV-PLIDVAL                               
+            EXEC SQL                                                  
+              INSERT INTO LEADER                                      
+              (PROJNAME,PLIDVAL)                                      
+               VALUES                                                 
+              (:HV-PROJNAME,:HV-PLIDVAL)                              
+            END-EXEC                                                  
+            EVALUATE SQLCODE                                          
+             WHEN 000                                                 
+              MOVE -1 TO IV-PLID                                      
+              COMPUTE WS-COUNTER = WS-COUNTER + 1                     
+             WHEN OTHER                                               
+              STRING WS-MSG DELIMITED BY '-',                         
+              'PLID INVALID-' DELIMITED BY SIZE                       
+               INTO WS-MSG                                            
+            END-EVALUATE                                              
+           END-EVALUATE.                                              
+       223-INSERT-PARA.                                               
+      *GENERATE EMPLOYEE ID                                           
+           MOVE 0 TO WS-COUNTER.                                      
+           INITIALIZE HV-EMPID                                        
+           EXEC SQL                                                   
+              SELECT MAX(EMPID) INTO :HV-EMPID :IV-EMPID              
+              FROM EMPLOYEE_MASTER   
+           END-EXEC.                                                    
+           EVALUATE SQLCODE                                             
+            WHEN 000                                                    
+             IF IV-EMPID = 0                                            
+              COMPUTE HV-EMPID = HV-EMPID + 1                           
+             ELSE                                                       
+              COMPUTE HV-EMPID = HV-EMPID + 10000                       
+             END-IF                                                     
+             COMPUTE WS-COUNTER = WS-COUNTER + 1                        
+            WHEN 100                                                    
+             STRING WS-MSG DELIMITED BY '-',                            
+              'EMP ID NOT GENERATE -' DELIMITED BY SIZE                 
+              INTO WS-MSG                                               
+            WHEN OTHER                                                  
+             STRING WS-MSG DELIMITED BY '-',                            
+             'EMP ID NOT GENERATE -' DELIMITED BY SIZE                  
+             INTO WS-MSG                                                
+           END-EVALUATE.                                                
+      *GENERATE EXTENSION                                               
+           IF DESGI = 'TRNEE'                                           
+            MOVE 0000000 TO HV-EXTN                                     
+            COMPUTE WS-COUNTER = WS-COUNTER + 1                         
+           ELSE                                                         
+            EXEC SQL                                                    
+               SELECT MAX(EXTNNUM) INTO :HV-EXTNNUM    
+               FROM EXTENSION                                           
+            END-EXEC                                                    
+            EVALUATE SQLCODE                                            
+             WHEN 000                                                   
+              EXEC SQL                                                  
+                 UPDATE EXTENSION SET EXTNNUM = :HV-EXTNNUM + 1         
+                 WHERE EXTNNUM = :HV-EXTNNUM                            
+              END-EXEC                                                  
+              EVALUATE SQLCODE                                          
+               WHEN 000                                                 
+                COMPUTE HV-EXTNNUM = HV-EXTNNUM + 1                     
+                MOVE HV-EXTNNUM TO HV-EXTN                              
+                COMPUTE WS-COUNTER = WS-COUNTER + 1                     
+               WHEN 100                                                 
+                STRING WS-MSG DELIMITED BY '-',                         
+                 'EXT UPDATE ERR -' DELIMITED BY SIZE                   
+                  INTO WS-MSG                                           
+              END-EVALUATE                                              
+             WHEN 100                                                   
+              STRING WS-MSG DELIMITED BY '-',                           
+               'EXT SEL INV-' DELIMITED BY SIZE                         
+               INTO WS-MSG                                              
+            END-EVALUATE                                                
+           END-IF.                                                      
+      *GENERATE PLID FOR PROJECT     
+           INITIALIZE HV-PLID.                                          
+           EVALUATE DESGI                                               
+            WHEN 'TRNEE'                                                
+             MOVE -1 TO IV-PLID                                         
+             COMPUTE WS-COUNTER = WS-COUNTER + 1                        
+            WHEN 'AVP'                                                  
+             MOVE -1 TO IV-PLID                                         
+             COMPUTE WS-COUNTER = WS-COUNTER + 1                        
+            WHEN 'PL'                                                   
+             PERFORM 225-PLID-PARA                                      
+            WHEN 'SE'                                                   
+             MOVE PROJI TO HV-PROJNAME-TEXT                             
+             MOVE LENGTH OF HV-PROJNAME-TEXT TO HV-PROJNAME-LEN         
+             EXEC SQL                                                   
+                SELECT PROJNAME,PLIDVAL INTO :HV-PROJNAME,:HV-PLIDVAL   
+                FROM LEADER                                             
+                WHERE PROJNAME = :HV-PROJNAME                           
+             END-EXEC                                                   
+             EVALUATE SQLCODE                                           
+              WHEN 000                                                  
+               MOVE HV-PLIDVAL TO HV-PLID                               
+               MOVE 0 TO IV-PLID                                        
+               COMPUTE WS-COUNTER = WS-COUNTER + 1                      
+              WHEN 100                                                  
+               STRING WS-MSG DELIMITED BY '-',              
+                 'PROJECT DOES NOT HAVE LEADER -' DELIMITED BY SIZE      
+                 INTO WS-MSG                                             
+               WHEN OTHER                                                
+                STRING WS-MSG DELIMITED BY '-',                          
+                'PLID INVALID -' DELIMITED BY SIZE                       
+                 INTO WS-MSG                                             
+              END-EVALUATE                                               
+            END-EVALUATE.                                                
+            IF WS-COUNTER = 3                                            
+             PERFORM 555-DATE-PARA                                       
+             MOVE LENGTH OF HV-EMPNAME-TEXT TO HV-EMPNAME-LEN            
+             MOVE LENGTH OF HV-DESG-TEXT TO HV-DESG-LEN                  
+             MOVE LENGTH OF HV-PROJ-TEXT TO HV-PROJ-LEN                  
+             MOVE LENGTH OF HV-MAILID-TEXT TO HV-MAILID-LEN              
+             EXEC SQL                                                    
+                INSERT INTO EMPLOYEE_MASTER                              
+                (EMPID,EMPNAME,DOJ,DESG,DEPTNO,PROJ,PLID,EXTN,           
+                 MAILID,SALARY)                                          
+                VALUES                                                   
+                (:HV-EMPID,:HV-EMPNAME,:HV-DOJ,:HV-DESG,:HV-DEPTNO,      
+                 :HV-PROJ :IV-PROJ,:HV-PLID :IV-PLID,:HV-EXTN,           
+                 :HV-MAILID,:HV-SALARY)                                  
+             END-EXEC                                                    
+             EVALUATE SQLCODE                                            
+              WHEN 0                  
+              STRING WS-MSG DELIMITED BY '-',                           
+               'INSERT SUCCES -' DELIMITED BY SIZE                      
+                INTO WS-MSG                                             
+                MOVE HV-EMPID TO EMPIDO                                 
+                MOVE HV-EXTN TO EXTENO                                  
+                MOVE HV-PLID TO PLIDO                                   
+             WHEN -305                                                  
+              STRING WS-MSG DELIMITED BY '-',                           
+              'INDICATOR VARIABLE IS NOT SPECIFIED -' DELIMITED BY SIZE 
+              INTO WS-MSG                                               
+             WHEN -311                                                  
+              STRING WS-MSG DELIMITED BY '-',                           
+              'LENGTH FOR VARCHAR -' DELIMITED BY SIZE                  
+              INTO WS-MSG                                               
+             WHEN -180                                                  
+              STRING WS-MSG DELIMITED BY '-',                           
+              'DATE NOT MOVED -' DELIMITED BY SIZE                      
+              INTO WS-MSG                                               
+             WHEN -805                                                  
+              STRING WS-MSG DELIMITED BY '-',                           
+              'PLAN NOT FOUND -' DELIMITED BY SIZE                      
+              INTO WS-MSG                                               
+             WHEN OTHER                                                 
+              MOVE SQLCODE TO WS-SQLCODE                                
+              STRING WS-MSG DELIMITED BY '-',   
+                 WS-SQLCODE DELIMITED BY SIZE,                           
+                'INSERT FAIL -' DELIMITED BY SIZE                        
+                 INTO WS-MSG                                             
+            END-IF.                                                      
+        555-DATE-PARA.                                                   
+            EXEC CICS ASKTIME                                            
+                 ABSTIME(WS-ABSTIME)                                     
+            END-EXEC.                                                    
+            EXEC CICS FORMATTIME                                         
+                 ABSTIME(WS-ABSTIME)                                     
+                 YYYYMMDD(WS-DOJ)                                        
+                 DATESEP('-')                                            
+            END-EXEC.                                                    
+            MOVE WS-DOJ TO HV-DOJ.                                       
+        500-RETURN-MAP-PARA.                                             
+            EXEC CICS                                                    
+                RETURN                                                   
+            END-EXEC.                                                    
+ **************************** Bottom of Data ****************************
+
